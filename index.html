@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Table with Title, Save/Load, JSON Import/Export, and PDF Export</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.14/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        textarea {
+            width: 100%;
+            background-color: transparent;
+            border: none;
+            resize: none;
+        }
+        th, td {
+            text-align: left;
+            vertical-align: top;
+            padding: 0.5rem;
+            position: relative;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th input {
+            background-color: #1F2938;
+            color: white;
+            border: none;
+            width: 100%;
+        }
+        td {
+            border: none;
+        }
+        tr {
+            border-bottom: 1px solid #ddd;
+        }
+        .table-title {
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: black;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body class="p-6">
+
+    <!-- Table and Controls -->
+    <div class="mb-4">
+        <button id="add-row" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Add Row</button>
+        <button id="remove-row" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Remove Row</button>
+        <button id="add-column" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add Column</button>
+        <button id="remove-column" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Remove Column</button>
+        <div>
+            <button id="save-data" class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Save Data as JSON</button>
+            <input type="file" id="upload-json" class="ml-4" accept=".json" />
+            <button id="load-json" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Load JSON</button>
+        </div>
+        
+        <button id="generate-pdf" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Generate PDF</button>
+    </div>
+
+    <!-- Info Table Section -->
+    <div class="flex">
+        <div class="mb-4 w-3/4 inline-block">
+            <table class="mb-4">
+                <tr>
+                    <td class="font-bold pr-2">Datum:</td>
+                    <td><input type="date" id="datum" class="border border-gray-300 p-2 w-1/2"></td>
+                </tr>
+                <tr>
+                    <td class="font-bold pr-2">Projekt:</td>
+                    <td><input type="text" id="projekt" class="border border-gray-300 p-2 w-1/2"></td>
+                </tr>
+                <tr>
+                    <td class="font-bold pr-2">Mitarbeiter:</td>
+                    <td><input type="text" id="mitarbeiter" class="border border-gray-300 p-2 w-1/2"></td>
+                </tr>
+                <tr>
+                    <td class="font-bold pr-2">Projektleiter:</td>
+                    <td><input type="text" id="projektleiter" class="border border-gray-300 p-2 w-1/2"></td>
+                </tr>
+            </table>
+        </div>
+        <!-- Logo -->
+        <div class="inline-block flex justify-center w-1/4 ml-6">
+            <img src="./logo.png" alt="" style="width: 100px;" id="logo">
+        </div>
+    </div>
+
+    <!-- Checklist Title -->
+    <div class="table-title w-1/2 flex">
+        <p class="font-bold pr-2 mr-10 text-black">Titel</p>
+        <input type="text" id="checklist-title" class="border-none bg-transparent w-full ml-10" placeholder="Enter checklist title here" />
+    </div>
+
+    <!-- Dynamic Table -->
+    <table id="dynamic-table" class="text-sm">
+        <thead>
+            <tr>
+                <th><input type="text" value="Index"></th>
+                <th><input type="text" value="ToDos"></th>
+                <th><input type="text" value="Erledigt?"></th>
+                <th><input type="text" value="Kürzel"></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td><textarea class="auto-resize" rows="1"></textarea></td>
+                <td><input type="checkbox" class="checkbox" onchange="updateKuerzel(this)"></td>
+                <td><textarea class="auto-resize" rows="1" readonly></textarea></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        const tableBody = document.querySelector('#dynamic-table tbody');
+        let rowCount = 1;
+
+        // Function to automatically resize textarea
+        function addAutoResizeListener(textarea) {
+            textarea.addEventListener('input', () => {
+                textarea.style.height = 'auto';
+                textarea.style.height = (textarea.scrollHeight) + 'px';
+            });
+        }
+
+        // Add auto-resize to the initial textarea
+        document.querySelectorAll('.auto-resize').forEach(addAutoResizeListener);
+
+        // Function to add a new row
+        document.getElementById('add-row').addEventListener('click', () => {
+            const newRow = tableBody.insertRow();
+            const currentColumnCount = document.querySelector('#dynamic-table thead tr').cells.length;
+
+            // Create cells for each column, including dynamically added ones
+            for (let i = 0; i < currentColumnCount; i++) {
+                const newCell = newRow.insertCell(i);
+
+                if (i === 0) { // Index column
+                    newCell.textContent = ++rowCount;
+                } else if (i === currentColumnCount - 1) { // Kürzel column
+                    const textarea = document.createElement('textarea');
+                    textarea.className = 'auto-resize';
+                    textarea.rows = 1;
+                    textarea.readOnly = true;
+                    newCell.appendChild(textarea);
+                } else if (i === currentColumnCount - 2) { // Erledigt column
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'checkbox';
+                    checkbox.onchange = function () { updateKuerzel(this); };
+                    newCell.appendChild(checkbox);
+                } else { // ToDos and dynamic columns
+                    const textarea = document.createElement('textarea');
+                    textarea.className = 'auto-resize';
+                    textarea.rows = 1;
+                    addAutoResizeListener(textarea);
+                    newCell.appendChild(textarea);
+                }
+            }
+
+            // Update row indices
+            updateRowIndices();
+        });
+
+        // Function to update the row indices
+        function updateRowIndices() {
+            const rows = tableBody.rows;
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].cells[0].textContent = i + 1;
+            }
+        }
+
+        // Function to update the Kürzel column based on checkbox status
+        function updateKuerzel(checkbox) {
+            const row = checkbox.closest('tr');
+            const kuerzelCell = row.cells[row.cells.length - 1]; // Kürzel is always the last column
+            const datum = document.getElementById('datum')?.value;
+            const mitarbeiter = document.getElementById('mitarbeiter')?.value;
+            const textarea = kuerzelCell.querySelector('textarea');
+
+            if (textarea) {
+                if (checkbox.checked) {
+                    textarea.value = `${mitarbeiter}, ${datum} `;
+                    textarea.readOnly = false; // Make the textarea editable
+                } else {
+                    textarea.value = '';
+                    textarea.readOnly = true; // Keep it non-editable when unchecked
+                }
+            } else {
+                console.error('Textarea not found in Kürzel column');
+            }
+        }
+        // Add Column Function
+document.getElementById('add-column').addEventListener('click', () => {
+    const tableHeadRow = document.querySelector('#dynamic-table thead tr');
+    const newHeaderCell = document.createElement('th');
+    const newInput = document.createElement('input');
+    newInput.type = 'text';
+    newInput.value = `Column ${tableHeadRow.cells.length - 2}`; // Dynamic column name
+    newHeaderCell.appendChild(newInput);
+    tableHeadRow.insertBefore(newHeaderCell, tableHeadRow.cells[tableHeadRow.cells.length - 2]); // Insert before Erledigt
+
+    // Update all existing rows to include this new column
+    const allRows = document.querySelectorAll('#dynamic-table tbody tr');
+    allRows.forEach(row => {
+        const newCell = row.insertCell(row.cells.length - 2); // Insert before the 'Erledigt' column
+        const textarea = document.createElement('textarea');
+        textarea.className = 'auto-resize';
+        textarea.rows = 1;
+        addAutoResizeListener(textarea);
+        newCell.appendChild(textarea);
+    });
+});
+
+// Remove Column Function
+document.getElementById('remove-column').addEventListener('click', () => {
+    const headerRow = document.querySelector('#dynamic-table thead tr');
+    if (headerRow.cells.length > 4) { // Ensure we keep at least Index, ToDos, Erledigt, and Kürzel
+        for (let i = 0; i < tableBody.rows.length; i++) {
+            tableBody.rows[i].deleteCell(headerRow.cells.length - 3); // Remove the second last column
+        }
+        headerRow.deleteCell(headerRow.cells.length - 3); // Remove from header
+    }
+});
+
+// Save Data to JSON Function (Adjusting for dynamic columns)
+document.getElementById('save-data').addEventListener('click', () => {
+    const data = {
+        datum: document.getElementById('datum').value,
+        projekt: document.getElementById('projekt').value,
+        mitarbeiter: document.getElementById('mitarbeiter').value,
+        projektleiter: document.getElementById('projektleiter').value,
+        checklistTitle: document.getElementById('checklist-title').value,
+        todos: []
+    };
+
+    const headerCells = document.querySelectorAll('#dynamic-table thead input');
+    const dynamicColumnHeaders = Array.from(headerCells).slice(2, headerCells.length - 2).map(input => input.value);
+
+    const rows = document.querySelectorAll('#dynamic-table tbody tr');
+    rows.forEach(row => {
+        const todo = {
+            index: row.cells[0].textContent,
+            todo: row.cells[1].querySelector('textarea').value,
+            erledigt: false, // Varsayılan olarak false
+            kuerzel: row.cells[row.cells.length - 1].querySelector('textarea').value,
+            dynamicColumns: {}
+        };
+
+        // Checkbox kontrolü
+        const checkbox = row.cells[row.cells.length - 2].querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            todo.erledigt = checkbox.checked; // Checkbox checked durumu
+        }
+
+        // Dinamik sütunlar için her bir değeri kaydetme
+        dynamicColumnHeaders.forEach((header, index) => {
+            todo.dynamicColumns[header] = row.cells[index + 2].querySelector('textarea').value; // 2: ToDos ve Index'yi atla
+        });
+
+        data.todos.push(todo);
+    });
+
+    // JSON verisini string olarak oluşturuyoruz
+    const jsonData = JSON.stringify(data, null, 2);
+
+    // Blob oluşturuyoruz
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    // İndirme işlemini başlatıyoruz
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'checklist_data.json'; // İndirilecek dosya adı
+    document.body.appendChild(a); // Linki body'ye ekliyoruz
+    a.click(); // İndirmeyi başlatıyoruz
+    document.body.removeChild(a); // Linki kaldırıyoruz
+    URL.revokeObjectURL(url); // Bellek temizliği yapıyoruz
+});
+
+// Load Data from JSON File (File Upload)
+document.getElementById('load-json').addEventListener('click', () => {
+    const fileInput = document.getElementById('upload-json');
+    const file = fileInput.files[0];
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = JSON.parse(e.target.result);
+
+            // Load basic info fields
+            document.getElementById('datum').value = data.datum;
+            document.getElementById('projekt').value = data.projekt;
+            document.getElementById('mitarbeiter').value = data.mitarbeiter;
+            document.getElementById('projektleiter').value = data.projektleiter;
+            document.getElementById('checklist-title').value = data.checklistTitle;
+
+            // Clear existing table rows
+            tableBody.innerHTML = '';
+
+            // Reset row count
+            rowCount = 0;
+
+            // Load todos into the table
+            data.todos.forEach((todo, rowIndex) => {
+                const newRow = tableBody.insertRow();
+                
+                // Insert the index
+                const indexCell = newRow.insertCell(0);
+                indexCell.textContent = ++rowCount;
+
+                // Insert ToDos cell
+                const todoCell = newRow.insertCell(1);
+                const todoTextarea = document.createElement('textarea');
+                todoTextarea.className = 'auto-resize';
+                todoTextarea.rows = 1;
+                todoTextarea.value = todo.todo;
+                addAutoResizeListener(todoTextarea);
+                todoCell.appendChild(todoTextarea);
+
+                // Insert checkbox cell
+                const erledigtCell = newRow.insertCell(2);
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'checkbox';
+                checkbox.checked = todo.erledigt;
+                checkbox.onchange = function () { updateKuerzel(this); };
+                erledigtCell.appendChild(checkbox);
+
+                // Insert Kürzel cell
+                const kuerzelCell = newRow.insertCell(newRow.cells.length);
+                const kuerzelTextarea = document.createElement('textarea');
+                kuerzelTextarea.className = 'auto-resize';
+                kuerzelTextarea.rows = 1;
+                kuerzelTextarea.value = todo.kuerzel;
+                kuerzelTextarea.readOnly = !todo.erledigt; // Make it editable based on checkbox
+                addAutoResizeListener(kuerzelTextarea);
+                kuerzelCell.appendChild(kuerzelTextarea);
+
+                // Add dynamic columns
+                const headerCells = document.querySelectorAll('#dynamic-table thead input');
+                const dynamicColumnHeaders = Array.from(headerCells).slice(2, headerCells.length - 2).map(input => input.value);
+
+                dynamicColumnHeaders.forEach((header, columnIndex) => {
+                    const dynamicCell = newRow.insertCell(newRow.cells.length - 2);
+                    const dynamicTextarea = document.createElement('textarea');
+                    dynamicTextarea.className = 'auto-resize';
+                    dynamicTextarea.rows = 1;
+                    dynamicTextarea.value = todo.dynamicColumns?.[header] || ''; // Load dynamic column data
+                    addAutoResizeListener(dynamicTextarea);
+                    dynamicCell.appendChild(dynamicTextarea);
+                });
+            });
+
+            // Apply auto-resize after loading all data
+            setTimeout(() => {
+                document.querySelectorAll('.auto-resize').forEach(textarea => {
+                    textarea.style.height = 'auto'; // Reset height
+                    textarea.style.height = `${textarea.scrollHeight}px`; // Adjust height based on content
+                });
+            }, 100);
+
+            alert('Data loaded successfully from JSON!');
+        };
+        reader.readAsText(file);
+    } else {
+        alert('Please select a JSON file to load.');
+    }
+});
+
+document.getElementById('generate-pdf').addEventListener('click', () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Add logo to the PDF
+    const logo = document.getElementById('logo');
+    const imgData = logo.src;
+    doc.addImage(imgData, 'PNG', 10, 10, 50, 20); // Logo ekleme
+
+    // Checklist title
+    const checklistTitle = document.getElementById('checklist-title').value || 'Checklist';
+    const datum = document.getElementById('datum').value;
+    const projekt = document.getElementById('projekt').value;
+    const mitarbeiter = document.getElementById('mitarbeiter').value;
+    const projektleiter = document.getElementById('projektleiter').value;
+
+    // Info Table kısmı PDF'e ekleme
+    doc.autoTable({
+        body: [
+            ['Datum', datum],
+            ['Projekt', projekt],
+            ['Mitarbeiter', mitarbeiter],
+            ['Projektleiter', projektleiter]
+        ],
+        startY: 40, // Logo'dan sonra yerleştiriliyor
+        theme: 'grid',
+        headStyles: { fillColor: [31, 41, 55], textColor: 255 },
+        bodyStyles: { fillColor: [249, 250, 251] },
+    });
+
+    // Checklist Title PDF'e ekleniyor
+    const checklistStartY = doc.previousAutoTable.finalY + 20; // Info Table'dan sonra yerleştiriliyor
+    doc.setFillColor(31, 41, 55); // Koyu arkaplan
+    doc.setTextColor(0, 0, 0); // Siyah metin
+    doc.setFontSize(12); // Font büyüklüğü
+    doc.rect(15, checklistStartY, 180, 10, 'F'); // Başlık kutusu
+    doc.text(checklistTitle, 20, checklistStartY + 6); // Başlık metni
+
+    // Checklist tablosu için verileri ayıklama
+    const table = document.querySelector('#dynamic-table');
+    const tableData = [];
+    const headers = [];
+    const headerInputs = table.querySelectorAll('thead input');
+    headerInputs.forEach(input => headers.push(input.value));
+    tableData.push(headers); // Başlıkları tablo verisine ekliyoruz
+
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const rowData = [];
+        const cells = row.querySelectorAll('td');
+        cells.forEach(cell => {
+            const textarea = cell.querySelector('textarea');
+            const checkbox = cell.querySelector('input[type="checkbox"]');
+            if (textarea) {
+                rowData.push(textarea.value);
+            } else if (checkbox) {
+                rowData.push(checkbox.checked ? 'Yes' : 'No');
+            } else {
+                rowData.push(cell.textContent);
+            }
+        });
+        tableData.push(rowData); // Satırları tablo verisine ekliyoruz
+    });
+
+    // Checklist tablosunu PDF'e ekleme
+    doc.autoTable({
+        head: [tableData[0]], // Tablo başlıkları
+        body: tableData.slice(1), // Tablo satırları
+        startY: checklistStartY + 15, // Checklist Title'dan sonra başlıyor
+        theme: 'grid',
+        headStyles: { fillColor: [31, 41, 55], textColor: 255 },
+        bodyStyles: { fillColor: [249, 250, 251] },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        margin: { top: 10 },
+        pageBreak: 'auto', // Satır sığmazsa otomatik olarak yeni sayfa başlat
+    });
+
+    // PDF'i kaydet
+    doc.save('checklist.pdf');
+});
+
+   
+
+    </script>
+</body>
+</html>
