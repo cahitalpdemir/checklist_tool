@@ -136,6 +136,30 @@
         Cahit Alpdemir, 2024
     </footer>
     <script>
+
+function showWelcomeAlert() {
+            alert(
+                "Hello and welcome! 👋\n\n" +
+                "This application is designed to make your work easier and more organized, especially for companies looking to streamline their processes.\n\n" +
+                "Here’s a quick look at what you can do:\n\n" +
+                "✨ Add and remove rows – Easily add new rows to your tables or remove the ones you don't need.\n" +
+                "✨ Add and remove columns – Expand or reduce your workspace by adding or removing dynamic columns.\n" +
+                "✨ Save and load data in JSON format – Save your work as a JSON file and pick up right where you left off!\n" +
+                "✨ Generate PDF – Organize all your data into a neat, shareable PDF.\n" +
+                "✨ Auto-resize cells – Cells automatically adjust their size based on the content you input.\n" +
+                "✨ Kürzel column – This column is automatically updated based on checkbox selections.\n" +
+                "✨ Logo and title – Create professional PDFs with your logo and custom title.\n\n" +
+                "This tool is crafted to help professionals speed up their workflows and keep things organized. We hope it makes your tasks easier and more enjoyable!\n\n" +
+                "Developed by Cahit Alpdemir, 2024."
+            );
+        }
+
+        // Sayfa yüklendiğinde karşılama ekranını göster
+        window.onload = showWelcomeAlert;
+
+
+
+
         const tableBody = document.querySelector('#dynamic-table tbody');
         let rowCount = 1;
 
