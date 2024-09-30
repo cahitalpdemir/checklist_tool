@@ -44,24 +44,38 @@
             padding: 10px;
             border-radius: 5px;
         }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #1F2938;
+            color: white;
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+        }
     </style>
 </head>
 <body class="p-6">
 
-    <!-- Table and Controls -->
-    <div class="mb-4">
-        <button id="add-row" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Add Row</button>
-        <button id="remove-row" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Remove Row</button>
-        <button id="add-column" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add Column</button>
-        <button id="remove-column" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Remove Column</button>
-        <div>
-            <button id="save-data" class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Save Data as JSON</button>
-            <input type="file" id="upload-json" class="ml-4" accept=".json" />
-            <button id="load-json" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Load JSON</button>
+   
+    <!-- Navbar -->
+    <nav class="bg-gray-800 p-4 mb-6">
+        <div class="flex justify-between items-center">
+            <div class="text-white text-lg font-bold">
+              Checklist_Company
+            </div>
+            <div class="space-x-4">
+                <button id="add-row" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Add Row</button>
+                <button id="remove-row" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Remove Row</button>
+                <button id="add-column" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add Column</button>
+                <button id="remove-column" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Remove Column</button>
+                <button id="save-data" class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Save Data as JSON</button>
+                <input type="file" id="upload-json" class="ml-4 text-white" accept=".json" />
+                <button id="load-json" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">Load JSON</button>
+                <button id="generate-pdf" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Generate PDF</button>
+            </div>
         </div>
-        
-        <button id="generate-pdf" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">Generate PDF</button>
-    </div>
+    </nav>
 
     <!-- Info Table Section -->
     <div class="flex">
@@ -87,7 +101,7 @@
         </div>
         <!-- Logo -->
         <div class="inline-block flex justify-center w-1/4 ml-6">
-            <img src="./logo.png" alt="" style="width: 100px;" id="logo">
+            <img src="./logo.png" alt="" style="width: 100px; height: 100px;" id="logo">
         </div>
     </div>
 
@@ -117,6 +131,10 @@
         </tbody>
     </table>
 
+    <!-- Footer -->
+    <footer>
+        Cahit Alpdemir, 2024
+    </footer>
     <script>
         const tableBody = document.querySelector('#dynamic-table tbody');
         let rowCount = 1;
@@ -196,6 +214,16 @@
                 console.error('Textarea not found in Kürzel column');
             }
         }
+        document.getElementById('remove-row').addEventListener('click', () => {
+            if (tableBody.rows.length > 0) {
+                tableBody.deleteRow(tableBody.rows.length - 1);
+                rowCount--;
+                updateRowIndices(); // Update indices after removing a row
+            }
+        });
+
+
+
         // Add Column Function
 document.getElementById('add-column').addEventListener('click', () => {
     const tableHeadRow = document.querySelector('#dynamic-table thead tr');
@@ -407,7 +435,7 @@ document.getElementById('generate-pdf').addEventListener('click', () => {
     // Checklist Title PDF'e ekleniyor
     const checklistStartY = doc.previousAutoTable.finalY + 20; // Info Table'dan sonra yerleştiriliyor
     doc.setFillColor(31, 41, 55); // Koyu arkaplan
-    doc.setTextColor(0, 0, 0); // Siyah metin
+    doc.setTextColor(255, 255, 255); // Siyah metin
     doc.setFontSize(12); // Font büyüklüğü
     doc.rect(15, checklistStartY, 180, 10, 'F'); // Başlık kutusu
     doc.text(checklistTitle, 20, checklistStartY + 6); // Başlık metni
